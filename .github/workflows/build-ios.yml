@@ -1,0 +1,32 @@
+name: Build Unsigned iOS IPA
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npx expo prebuild --platform ios --no-install
+      - run: cd ios && pod install
+      - name: Build Archive
+        run: |
+          xcodebuild -workspace ios/KaloriGue.xcworkspace \
+            -scheme KaloriGue \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/KaloriGue.xcarchive \
+            archive CODE_SIGNING_ALLOWED=NO
+      - name: Package IPA
+        run: |
+          mkdir -p build/Payload
+          cp -r build/KaloriGue.xcarchive/Products/Applications/KaloriGue.app build/Payload/
+          cd build && zip -r KaloriGue.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KaloriGue-IPA
+          path: build/KaloriGue.ipa
